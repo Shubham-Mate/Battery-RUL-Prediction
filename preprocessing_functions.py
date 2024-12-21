@@ -80,3 +80,14 @@ def drop_outlier_discharge_cycles(df,bins):
         index.extend(list(idx))
     return df.iloc[index, :]
 
+def generate_sliding_window_data(sequence, window_size=10):
+    x, y = [],[]
+    for i in range(len(sequence) - window_size):
+        features = sequence[i:i+window_size]
+        target = sequence[i+window_size]
+
+        x.append(features)
+        y.append(target)
+        
+    return np.array(x).astype(np.float32), np.array(y).astype(np.float32)
+
