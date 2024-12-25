@@ -39,22 +39,49 @@ class TCNBlock(torch.nn.Module):
         self.residual_conv = torch.nn.Conv1d(in_channels=in_channels, out_channels=out_channels)
 
 
-    def forward(self):
-        pass
+    def forward(self, x):
+        # Block 1
+        out = self.dilated_conv_1(x)
+        out = self.norm1(out)
+        out = self.relu(out)
+        out = self.dropout(out)
+
+        # Block 2
+        out = self.dilated_conv_2(out)
+        out = self.norm2(out)
+        out = self.relu(out)
+        out = self.dropout(out)
+
+        # Residual Connection
+        res = self.residual_conv(x)
+        out = out + res
+
+        return out
 
 class FeatureAttention(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, in_dim):
         super(FeatureAttention, self).__init__()
-        pass
+        self.tanh = torch.nn.Tanh()
+        self.softmax = torch.nn.Softmax()
+        self.map = torch.nn.Linear(in_dim, 1)
 
-    def forward(self):
-        pass
+    def forward(self, x):
+        out = self.tanh(self.map(x))
+        out = out.view(out.size(0), -1)
+        alpha = self.softmax(out)
+        s = alpha * x
+        return s
 
 class Encoder(torch.nn.Module):
     def __init__(self):
         super(Encoder, self).__init__()
-        pass
+        self.tcn = TCNBlock(1, 8, 16, 3, 4)
+        self.feature_attention = FeatureAttention(16)
 
-    def forward(self):
-        pass
+    def forward(self, x):
+        out = self.tcn(x)
+        out = self.feature_attention(out)
+        return out
 
+
+# Defining the decoder
