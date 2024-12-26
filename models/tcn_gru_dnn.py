@@ -85,3 +85,64 @@ class Encoder(torch.nn.Module):
 
 
 # Defining the decoder
+
+class TemporalAttention(torch.nn.Module):
+    def __init__(self, in_dim, out_dim):
+        super(TemporalAttention, self).__init__()
+        self.softmax = torch.nn.Softmax()
+        self.tanh = torch.nn.Tanh()
+        self.linear = torch.nn.Linear(in_dim, out_dim)
+
+    def forward(self, x):
+        dot_prods = x @ x.T
+        mask =torch.full((x.size(-2), x.size(-2)), float('-inf'))
+        mask = torch.diag(mask, diagonal=1)
+        masked_dot_prods = dot_prods + mask
+        alpha = self.softmax(masked_dot_prods)
+
+        context_vectors = alpha @ x
+        out = self.tanh(self.linear(torch.cat((context_vectors, x), dim=-1)))
+
+        return out
+
+class Decoder(torch.nn.Module):
+    def __init__(self, in_dim, hidden_dim, out_dim):
+        super(Decoder, self).__init__()
+        self.gru = torch.nn.GRU(in_dim, hidden_dim, batch_first=True)
+        self.temporal_attention = TemporalAttention(hidden_dim, out_dim)
+
+        
+
+    def forward(self, x):
+        outputs, hidden = self.gru(x)
+        out = self.temporal_attention(outputs)
+
+        return out
+
+
+# Assemble the Model
+
+class TCN_GRU_DNN_Model(torch.nn.Module):
+    def __init__(self):
+        super(TCN_GRU_DNN_Model, self).__init__()
+        self.encoder = Encoder()
+        self.decoder = Decoder(5, 16, 32)
+
+        # Define DNN
+        self.dnn = torch.nn.Sequential(
+            torch.nn.Linear(32, 16),
+            torch.nn.ReLU(),
+            torch.nn.Linear(16, 8),
+            torch.nn.ReLU(),
+            torch.nn.Linear(8, 4),
+            torch.nn.ReLU(),
+            torch.nn.Linear(4, 1)
+        )
+
+    def forward(self, x):
+        out = self.encoder(x)
+        out = self.decoder(out)
+        out = out.view(out.size(0), -1)
+        out = self.dnn(out)
+
+        return out
