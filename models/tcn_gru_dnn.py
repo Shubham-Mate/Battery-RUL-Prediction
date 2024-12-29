@@ -22,6 +22,7 @@ class DilatedCausalConv1D(torch.nn.Module):
 
         # We only want padding on left side, but the actual padding is on both the sides.
         # So we discard last outputs which are present because of right padding
+        
         x = x[:, :, :-self.padding] if self.padding != 0 else x 
         return x
 
@@ -36,7 +37,7 @@ class TCNBlock(torch.nn.Module):
         self.relu = torch.nn.ReLU()
         self.dropout = torch.nn.Dropout(dropout)
 
-        self.residual_conv = torch.nn.Conv1d(in_channels=in_channels, out_channels=out_channels)
+        self.residual_conv = torch.nn.Conv1d(in_channels=in_channels, out_channels=out_channels, kernel_size=1)
 
 
     def forward(self, x):
@@ -66,9 +67,12 @@ class FeatureAttention(torch.nn.Module):
         self.map = torch.nn.Linear(in_dim, 1)
 
     def forward(self, x):
-        out = self.tanh(self.map(x))
+        out = self.tanh(self.map(x.mT))
         out = out.view(out.size(0), -1)
+
         alpha = self.softmax(out)
+        alpha = alpha.unsqueeze(1)
+
         s = alpha * x
         return s
 
@@ -91,15 +95,16 @@ class TemporalAttention(torch.nn.Module):
         super(TemporalAttention, self).__init__()
         self.softmax = torch.nn.Softmax()
         self.tanh = torch.nn.Tanh()
-        self.linear = torch.nn.Linear(in_dim, out_dim)
+        self.linear = torch.nn.Linear(in_dim * 2, out_dim)
 
     def forward(self, x):
-        dot_prods = x @ x.T
-        mask =torch.full((x.size(-2), x.size(-2)), float('-inf'))
-        mask = torch.diag(mask, diagonal=1)
-        masked_dot_prods = dot_prods + mask
-        alpha = self.softmax(masked_dot_prods)
+        dot_prods = x @ x.mT
 
+        mask =torch.full((x.size(-2), x.size(-2)), -1e9).to(x.get_device())
+        mask = torch.triu(mask, diagonal=1)
+        masked_dot_prods = dot_prods + mask
+
+        alpha = self.softmax(masked_dot_prods)
         context_vectors = alpha @ x
         out = self.tanh(self.linear(torch.cat((context_vectors, x), dim=-1)))
 
@@ -124,13 +129,13 @@ class Decoder(torch.nn.Module):
 
 class TCN_GRU_DNN_Model(torch.nn.Module):
     def __init__(self):
-        super(TCN_GRU_DNN_Model, self).__init__()
+        super().__init__()
         self.encoder = Encoder()
-        self.decoder = Decoder(5, 16, 32)
+        self.decoder = Decoder(16, 8, 4)
 
         # Define DNN
         self.dnn = torch.nn.Sequential(
-            torch.nn.Linear(32, 16),
+            torch.nn.Linear(40, 16),
             torch.nn.ReLU(),
             torch.nn.Linear(16, 8),
             torch.nn.ReLU(),
@@ -141,6 +146,7 @@ class TCN_GRU_DNN_Model(torch.nn.Module):
 
     def forward(self, x):
         out = self.encoder(x)
+        out = out.mT
         out = self.decoder(out)
         out = out.view(out.size(0), -1)
         out = self.dnn(out)
