@@ -9,13 +9,13 @@ class DilatedCausalConv1D(torch.nn.Module):
         self.dilation = dilation
         self.padding = (kernel_size - 1) * dilation
 
-        self.conv = torch.nn.Conv1d(
+        self.conv = torch.nn.utils.weight_norm(torch.nn.Conv1d(
             in_channels=in_channels,
             out_channels=out_channels,
             kernel_size=self.kernel_size,
             padding=self.padding,
             dilation=self.dilation
-        )
+        ))
 
     def forward(self, x):
         x = self.conv(x)
@@ -32,8 +32,8 @@ class TCNBlock(torch.nn.Module):
         self.dilated_conv_1 = DilatedCausalConv1D(in_channels=in_channels, out_channels=intermediate_channels, kernel_size=kernel_size_1, dilation=dilation_1)
         self.dilated_conv_2 = DilatedCausalConv1D(in_channels=intermediate_channels, out_channels=out_channels, kernel_size=kernel_size_2, dilation=dilation_2)
 
-        self.norm1 = torch.nn.BatchNorm1d(intermediate_channels)
-        self.norm2 = torch.nn.BatchNorm1d(out_channels)
+        #self.norm1 = torch.nn.BatchNorm1d(intermediate_channels)
+        #self.norm2 = torch.nn.BatchNorm1d(out_channels)
         self.relu = torch.nn.ReLU()
         self.dropout = torch.nn.Dropout(dropout)
 
@@ -43,13 +43,13 @@ class TCNBlock(torch.nn.Module):
     def forward(self, x):
         # Block 1
         out = self.dilated_conv_1(x)
-        out = self.norm1(out)
+        #out = self.norm1(out)
         out = self.relu(out)
         out = self.dropout(out)
 
         # Block 2
         out = self.dilated_conv_2(out)
-        out = self.norm2(out)
+        #out = self.norm2(out)
         out = self.relu(out)
         out = self.dropout(out)
 
@@ -63,7 +63,7 @@ class FeatureAttention(torch.nn.Module):
     def __init__(self, in_dim):
         super(FeatureAttention, self).__init__()
         self.tanh = torch.nn.Tanh()
-        self.softmax = torch.nn.Softmax()
+        self.softmax = torch.nn.Softmax(dim=-1)
         self.map = torch.nn.Linear(in_dim, 1)
 
     def forward(self, x):
@@ -93,12 +93,12 @@ class Encoder(torch.nn.Module):
 class TemporalAttention(torch.nn.Module):
     def __init__(self, in_dim, out_dim):
         super(TemporalAttention, self).__init__()
-        self.softmax = torch.nn.Softmax()
+        self.softmax = torch.nn.Softmax(dim=-1)
         self.tanh = torch.nn.Tanh()
         self.linear = torch.nn.Linear(in_dim * 2, out_dim)
 
     def forward(self, x):
-        dot_prods = x @ x.mT
+        dot_prods = torch.bmm(x, x.mT)
 
         mask =torch.full((x.size(-2), x.size(-2)), -1e9).to(x.get_device())
         mask = torch.triu(mask, diagonal=1)
