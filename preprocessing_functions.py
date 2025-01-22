@@ -36,9 +36,12 @@ def get_capacities_and_cycle_index(df):
     #charge_capacities = np.zeros(len(cycle_index))
 
     for index in cycle_index:
-        discharge_capacities[index-1] = df.loc[df['Cycle_Index'] == index, 'Discharge_Capacity(Ah)'].to_list()[-1]
+        if df.loc[df['Cycle_Index'] == index].iloc[-1]['Step_Index'] == 9:
+            discharge_capacities[index-1] = df.loc[df['Cycle_Index'] == index, 'Discharge_Capacity(Ah)'].to_list()[-1]
         #charge_capacities[index-1] = df.loc[df['Cycle_Index'] == index, 'Charge_Capacity(Ah)'].to_list()[-1]
 
+    cycle_index = cycle_index[discharge_capacities != 0]
+    discharge_capacities = discharge_capacities[discharge_capacities != 0]
     discharge_capacities = np.concat([np.array([discharge_capacities[0]]), np.diff(discharge_capacities)])
     #charge_capacities = np.concat([np.array([charge_capacities[0]]), np.diff(charge_capacities)])
 
@@ -74,7 +77,7 @@ def drop_outlier_discharge_cycles(df,bins):
         array_lim = discharge_capacities[i:i+bins]
         sigma = np.std(array_lim)
         mean = np.median(array_lim)
-        th_max,th_min = mean + sigma*1.2, mean - sigma*1.2
+        th_max,th_min = mean + sigma*1.2, mean - sigma*1
         idx = np.where((array_lim < th_max) & (array_lim > th_min))
         idx = idx[0] + i
         index.extend(list(idx))
