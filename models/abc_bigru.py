@@ -6,11 +6,11 @@ class BiGRUModel(torch.nn.Module):
         super().__init__()
         self.bigru = torch.nn.GRU(input_size, hidden_size, bidirectional=True, batch_first=True)
         self.dropout = torch.nn.Dropout(dropout)
-        self.fc = torch.nn.Linear(hidden_size * 2, 1)  # Hidden size * 2 because it's bidirectional
+        self.fc = torch.nn.Linear(hidden_size * 2, 1)
 
     def forward(self, x):
         x, _ = self.bigru(x)
-        x = self.dropout(x[:, -1, :])  # Use the last hidden state
+        x = self.dropout(x[:, -1, :])
         x = self.fc(x)
         return x
 
