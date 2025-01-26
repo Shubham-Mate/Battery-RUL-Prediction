@@ -8,3 +8,5 @@ class CALCEDatasetConstants(Enum):
     BATTERY_DATASET_PATHS = [pathlib.Path(__file__).parent / "data" / "CALCE" / 'Raw' / name for name in BATTERY_NAMES]
     BATTERY_PROCESSED_PATH = pathlib.Path(__file__).parent / "data" / "CALCE" / 'Preprocessed'
     BATTERY_DATASET_PATHS_CSV = [pathlib.Path(__file__).parent / "data" / "CALCE" / 'CSV' / name for name in BATTERY_NAMES]
+
+MODEL_OUTPUT_PATH = pathlib.Path(__file__).parent / 'saved models'

@@ -30,7 +30,7 @@ def evaluate_hyperparameters(params, train_dataloader, val_dataloader, device):
         for batch_X, batch_y in train_dataloader:
             optimizer.zero_grad()
             outputs = model(batch_X.unsqueeze(1).to(device))
-            loss = criterion(outputs.squeeze(), batch_y)
+            loss = criterion(outputs.squeeze(), batch_y.to(device))
             loss.backward()
             optimizer.step()
 
@@ -40,7 +40,7 @@ def evaluate_hyperparameters(params, train_dataloader, val_dataloader, device):
     with torch.no_grad():
         for batch_X, batch_y in val_dataloader:
             outputs = model(batch_X.unsqueeze(1).to(device)).squeeze()
-            loss = criterion(outputs, batch_y)
+            loss = criterion(outputs, batch_y.to(device))
             total_loss += loss.item()
 
     return total_loss / len(val_dataloader)  # Return average MSE as fitness
@@ -51,10 +51,10 @@ def modify_solution(solution, bounds, factor=0.1):
     new_solution = solution + np.random.uniform(-factor, factor, size=len(solution))
     return np.clip(new_solution, bounds[:, 0], bounds[:, 1])
 
-def abc_algorithm(bounds, train_dataloader, val_dataloader, n_solutions=10, max_iters=20):
+def abc_algorithm(bounds, train_dataloader, val_dataloader, device, n_solutions=10, max_iters=20):
     n_params = bounds.shape[0]
     solutions = np.random.uniform(bounds[:, 0], bounds[:, 1], size=(n_solutions, n_params))
-    fitness = np.array([evaluate_hyperparameters(s, train_dataloader, val_dataloader) for s in solutions])
+    fitness = np.array([evaluate_hyperparameters(s, train_dataloader, val_dataloader, device) for s in solutions])
 
     best_solution = solutions[np.argmin(fitness)]
     best_fitness = np.min(fitness)
@@ -63,7 +63,7 @@ def abc_algorithm(bounds, train_dataloader, val_dataloader, n_solutions=10, max_
         for i in range(n_solutions):
             # Employed bee phase
             new_solution = modify_solution(solutions[i], bounds)
-            new_fitness = evaluate_hyperparameters(new_solution, train_dataloader, val_dataloader)
+            new_fitness = evaluate_hyperparameters(new_solution, train_dataloader, val_dataloader, device)
             if new_fitness < fitness[i]:
                 solutions[i] = new_solution
                 fitness[i] = new_fitness
@@ -73,7 +73,7 @@ def abc_algorithm(bounds, train_dataloader, val_dataloader, n_solutions=10, max_
         for i in range(n_solutions):
             if np.random.rand() < probabilities[i]:
                 new_solution = modify_solution(solutions[i], bounds)
-                new_fitness = evaluate_hyperparameters(new_solution, train_dataloader, val_dataloader)
+                new_fitness = evaluate_hyperparameters(new_solution, train_dataloader, val_dataloader, device)
                 if new_fitness < fitness[i]:
                     solutions[i] = new_solution
                     fitness[i] = new_fitness
@@ -82,7 +82,7 @@ def abc_algorithm(bounds, train_dataloader, val_dataloader, n_solutions=10, max_
         if np.random.rand() < 0.1:  # 10% chance to explore randomly
             random_index = np.random.randint(n_solutions)
             solutions[random_index] = np.random.uniform(bounds[:, 0], bounds[:, 1], size=n_params)
-            fitness[random_index] = evaluate_hyperparameters(solutions[random_index], train_dataloader, val_dataloader)
+            fitness[random_index] = evaluate_hyperparameters(solutions[random_index], train_dataloader, val_dataloader, device)
 
         # Update the best solution
         current_best_index = np.argmin(fitness)
