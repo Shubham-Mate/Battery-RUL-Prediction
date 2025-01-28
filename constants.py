@@ -9,4 +9,9 @@ class CALCEDatasetConstants(Enum):
     BATTERY_PROCESSED_PATH = pathlib.Path(__file__).parent / "data" / "CALCE" / 'Preprocessed'
     BATTERY_DATASET_PATHS_CSV = [pathlib.Path(__file__).parent / "data" / "CALCE" / 'CSV' / name for name in BATTERY_NAMES]
 
+class NASADatasetConstants(Enum):
+    BATTERY_NAMES = ['B00' + num for num in ['05', '06', '07', '18']]
+    BATTERY_FILE_NAMES = [name + '_discharge.csv' for name in BATTERY_NAMES]
+    BATTERY_FILEPATHS = [pathlib.Path(__file__).parent / "data" / 'NASA' / file_name for file_name in BATTERY_FILE_NAMES]
+
 MODEL_OUTPUT_PATH = pathlib.Path(__file__).parent / 'saved models'
