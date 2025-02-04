@@ -30,9 +30,9 @@ class BiLSTM_Attention(torch.nn.Module):
     def __init__(self, hidden_dim):
         super().__init__()
         self.dropout = torch.nn.Dropout(0.5)
-        self.bilstm_1 = torch.nn.LSTM(1, hidden_size=hidden_dim, batch_first=True, bidirectional=True, num_layers=4)
-        self.bilstm_2 = torch.nn.LSTM(input_size=hidden_dim*2, hidden_size=hidden_dim, batch_first=True, bidirectional=True, num_layers=4)
-        self.bilstm_3 = torch.nn.LSTM(input_size=hidden_dim*2, hidden_size=hidden_dim, batch_first=True, bidirectional=True, num_layers=4)
+        self.bilstm_1 = torch.nn.LSTM(1, hidden_size=hidden_dim, batch_first=True, bidirectional=True, num_layers=1, dropout=0.5)
+        self.bilstm_2 = torch.nn.LSTM(input_size=hidden_dim*2, hidden_size=hidden_dim, batch_first=True, bidirectional=True, num_layers=1, dropout=0.5)
+        self.bilstm_3 = torch.nn.LSTM(input_size=hidden_dim*2, hidden_size=hidden_dim, batch_first=True, bidirectional=True, num_layers=1, dropout=0.5)
         self.attn = Attention(hidden_dim*2, hidden_dim)
         self.dnn = torch.nn.Sequential(
             torch.nn.Linear(hidden_dim, 64),

@@ -81,7 +81,8 @@ def plot_predictions(
     device, 
     column_name="Discharge_Capacity(Ah)", 
     unsqueeze_dim=1, 
-    cutoff_percentage=30
+    cutoff_percentage=30,
+    window_size=10
 ):
     """
     Generates predictions for the test curve using the given model and plots the results.
@@ -109,7 +110,7 @@ def plot_predictions(
     test_curve = dfs[test_battery].loc[cutoff_cycle:, column_name].values
 
     # Generate sliding window data
-    sliding_windows = generate_sliding_window_data(np.append(initial[-10:], test_curve))[0]
+    sliding_windows = generate_sliding_window_data(np.append(initial[-window_size:], test_curve), window_size)[0]
 
     model.eval()
 

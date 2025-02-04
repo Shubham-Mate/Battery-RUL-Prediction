@@ -27,13 +27,13 @@ class DilatedCausalConv1D(torch.nn.Module):
         return x
 
 class TCNBlock(torch.nn.Module):
-    def __init__(self, in_channels, intermediate_channels, out_channels, kernel_size_1, kernel_size_2, dilation_1=2, dilation_2=3, dropout=0.2):
+    def __init__(self, in_channels, intermediate_channels, out_channels, kernel_size, dilations, dropout=0.2):
         super(TCNBlock, self).__init__()
-        self.dilated_conv_1 = DilatedCausalConv1D(in_channels=in_channels, out_channels=intermediate_channels, kernel_size=kernel_size_1, dilation=dilation_1)
-        self.dilated_conv_2 = DilatedCausalConv1D(in_channels=intermediate_channels, out_channels=out_channels, kernel_size=kernel_size_2, dilation=dilation_2)
+        self.dilated_conv_1 = DilatedCausalConv1D(in_channels=in_channels, out_channels=intermediate_channels, kernel_size=kernel_size, dilation=dilations[0])
+        self.dilated_conv_2 = DilatedCausalConv1D(in_channels=intermediate_channels, out_channels=out_channels, kernel_size=kernel_size, dilation=dilations[1])
 
-        #self.norm1 = torch.nn.BatchNorm1d(intermediate_channels)
-        #self.norm2 = torch.nn.BatchNorm1d(out_channels)
+        self.norm1 = torch.nn.BatchNorm1d(intermediate_channels)
+        self.norm2 = torch.nn.BatchNorm1d(out_channels)
         self.relu = torch.nn.ReLU()
         self.dropout = torch.nn.Dropout(dropout)
 
@@ -43,15 +43,15 @@ class TCNBlock(torch.nn.Module):
     def forward(self, x):
         # Block 1
         out = self.dilated_conv_1(x)
-        #out = self.norm1(out)
+        out = self.norm1(out)
         out = self.relu(out)
-        out = self.dropout(out)
+        #out = self.dropout(out)
 
         # Block 2
         out = self.dilated_conv_2(out)
-        #out = self.norm2(out)
+        out = self.norm2(out)
         out = self.relu(out)
-        out = self.dropout(out)
+        #out = self.dropout(out)
 
         # Residual Connection
         res = self.residual_conv(x)
@@ -79,12 +79,19 @@ class FeatureAttention(torch.nn.Module):
 class Encoder(torch.nn.Module):
     def __init__(self):
         super(Encoder, self).__init__()
-        self.tcn = TCNBlock(1, 8, 16, 3, 4)
+        self.tcn_1 = TCNBlock(1, 64, 64, 5, [1,1])
+        self.tcn_2 = TCNBlock(64, 64, 64, 5, [2, 2])
+        self.tcn_3 = TCNBlock(64, 64, 64, 5, [4, 4])
+        self.tcn_4 = TCNBlock(64, 64, 64, 5, [8, 8])
+        self.tcn_5 = TCNBlock(64, 64, 64, 5, [16, 16])
+        self.tcn_6 = TCNBlock(64, 64, 16, 5, [32, 32])
+
         self.feature_attention = FeatureAttention(16)
 
     def forward(self, x):
-        out = self.tcn(x)
-        out = self.feature_attention(out)
+        for block in [self.tcn_1, self.tcn_2, self.tcn_3, self.tcn_4, self.tcn_5, self.tcn_6]:
+            x = block(x)
+        out = self.feature_attention(x)
         return out
 
 
@@ -128,20 +135,18 @@ class Decoder(torch.nn.Module):
 # Assemble the Model
 
 class TCN_GRU_DNN_Model(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, window_size=10):
         super().__init__()
         self.encoder = Encoder()
-        self.decoder = Decoder(16, 8, 4)
+        self.decoder = Decoder(16, 100, 4)
 
         # Define DNN
         self.dnn = torch.nn.Sequential(
-            torch.nn.Linear(40, 16),
+            torch.nn.Linear(window_size*4, 40),
             torch.nn.ReLU(),
-            torch.nn.Linear(16, 8),
+            torch.nn.Linear(40, 10),
             torch.nn.ReLU(),
-            torch.nn.Linear(8, 4),
-            torch.nn.ReLU(),
-            torch.nn.Linear(4, 1)
+            torch.nn.Linear(10, 1),
         )
 
     def forward(self, x):

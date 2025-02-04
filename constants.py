@@ -14,4 +14,7 @@ class NASADatasetConstants(Enum):
     BATTERY_FILE_NAMES = [name + '_discharge.csv' for name in BATTERY_NAMES]
     BATTERY_FILEPATHS = [pathlib.Path(__file__).parent / "data" / 'NASA' / file_name for file_name in BATTERY_FILE_NAMES]
 
-MODEL_OUTPUT_PATH = pathlib.Path(__file__).parent / 'saved models'
+class ModelOutputConstants(Enum):
+    MODEL_OUTPUT_PATH = pathlib.Path(__file__).parent / 'saved models'
+    CALCE_OUTPUT_PATH = MODEL_OUTPUT_PATH / "CALCE"
+    NASA_OUTPUT_PATH = MODEL_OUTPUT_PATH / "NASA"

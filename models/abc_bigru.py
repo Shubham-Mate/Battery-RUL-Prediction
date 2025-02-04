@@ -6,7 +6,12 @@ class BiGRUModel(torch.nn.Module):
         super().__init__()
         self.bigru = torch.nn.GRU(input_size, hidden_size, bidirectional=True, batch_first=True)
         self.dropout = torch.nn.Dropout(dropout)
-        self.fc = torch.nn.Linear(hidden_size * 2, 1)
+        self.fc = torch.nn.Sequential(
+            torch.nn.Linear(hidden_size * 2, 8),
+            torch.nn.ReLU(),
+            torch.nn.Linear(8, 4),
+            torch.nn.ReLU(),
+            torch.nn.Linear(4, 1))
 
     def forward(self, x):
         x, _ = self.bigru(x)
@@ -15,12 +20,12 @@ class BiGRUModel(torch.nn.Module):
         return x
 
 # Define the evaluation function for the ABC algorithm
-def evaluate_hyperparameters(params, train_dataloader, val_dataloader, device):
+def evaluate_hyperparameters(params, train_dataloader, val_dataloader, device, window_size=10):
     hidden_size, learning_rate, dropout = params
     hidden_size = int(hidden_size)
 
     # Initialize the model, loss, and optimizer
-    model = BiGRUModel(input_size=10, hidden_size=hidden_size, dropout=dropout).to(device)
+    model = BiGRUModel(input_size=window_size, hidden_size=hidden_size, dropout=dropout).to(device)
     criterion = torch.nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
@@ -51,10 +56,10 @@ def modify_solution(solution, bounds, factor=0.1):
     new_solution = solution + np.random.uniform(-factor, factor, size=len(solution))
     return np.clip(new_solution, bounds[:, 0], bounds[:, 1])
 
-def abc_algorithm(bounds, train_dataloader, val_dataloader, device, n_solutions=10, max_iters=20):
+def abc_algorithm(bounds, train_dataloader, val_dataloader, device, n_solutions=10, max_iters=20, window_size=10):
     n_params = bounds.shape[0]
     solutions = np.random.uniform(bounds[:, 0], bounds[:, 1], size=(n_solutions, n_params))
-    fitness = np.array([evaluate_hyperparameters(s, train_dataloader, val_dataloader, device) for s in solutions])
+    fitness = np.array([evaluate_hyperparameters(s, train_dataloader, val_dataloader, device, window_size) for s in solutions])
 
     best_solution = solutions[np.argmin(fitness)]
     best_fitness = np.min(fitness)
@@ -63,7 +68,7 @@ def abc_algorithm(bounds, train_dataloader, val_dataloader, device, n_solutions=
         for i in range(n_solutions):
             # Employed bee phase
             new_solution = modify_solution(solutions[i], bounds)
-            new_fitness = evaluate_hyperparameters(new_solution, train_dataloader, val_dataloader, device)
+            new_fitness = evaluate_hyperparameters(new_solution, train_dataloader, val_dataloader, device, window_size)
             if new_fitness < fitness[i]:
                 solutions[i] = new_solution
                 fitness[i] = new_fitness
@@ -73,7 +78,7 @@ def abc_algorithm(bounds, train_dataloader, val_dataloader, device, n_solutions=
         for i in range(n_solutions):
             if np.random.rand() < probabilities[i]:
                 new_solution = modify_solution(solutions[i], bounds)
-                new_fitness = evaluate_hyperparameters(new_solution, train_dataloader, val_dataloader, device)
+                new_fitness = evaluate_hyperparameters(new_solution, train_dataloader, val_dataloader, device, window_size)
                 if new_fitness < fitness[i]:
                     solutions[i] = new_solution
                     fitness[i] = new_fitness
@@ -82,7 +87,7 @@ def abc_algorithm(bounds, train_dataloader, val_dataloader, device, n_solutions=
         if np.random.rand() < 0.1:  # 10% chance to explore randomly
             random_index = np.random.randint(n_solutions)
             solutions[random_index] = np.random.uniform(bounds[:, 0], bounds[:, 1], size=n_params)
-            fitness[random_index] = evaluate_hyperparameters(solutions[random_index], train_dataloader, val_dataloader, device)
+            fitness[random_index] = evaluate_hyperparameters(solutions[random_index], train_dataloader, val_dataloader, device, window_size)
 
         # Update the best solution
         current_best_index = np.argmin(fitness)
