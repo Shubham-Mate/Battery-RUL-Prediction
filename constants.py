@@ -16,5 +16,6 @@ class NASADatasetConstants(Enum):
 
 class ModelOutputConstants(Enum):
     MODEL_OUTPUT_PATH = pathlib.Path(__file__).parent / 'saved models'
+    PLOTS_OUTPUT_PATH = pathlib.Path(__file__).parent / 'plots'
     CALCE_OUTPUT_PATH = MODEL_OUTPUT_PATH / "CALCE"
     NASA_OUTPUT_PATH = MODEL_OUTPUT_PATH / "NASA"
