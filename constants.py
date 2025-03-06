@@ -14,8 +14,14 @@ class NASADatasetConstants(Enum):
     BATTERY_FILE_NAMES = [name + '_discharge.csv' for name in BATTERY_NAMES]
     BATTERY_FILEPATHS = [pathlib.Path(__file__).parent / "data" / 'NASA' / file_name for file_name in BATTERY_FILE_NAMES]
 
+class CustomDatasetConstants(Enum):
+    BATTERY_NAMES = ['BP10074', 'BP10119']
+    BATTERY_RAW_DATASET_PATHS = [pathlib.Path(__file__).parent / 'data' / 'Custom Dataset' / 'raw' / f'{name}.csv' for name in BATTERY_NAMES]
+    BATTERY_PROCESSED_DATASET_PATHS = [pathlib.Path(__file__).parent / 'data' / 'Custom Dataset' / 'preprocessed' / name for name in BATTERY_NAMES]
+
 class ModelOutputConstants(Enum):
     MODEL_OUTPUT_PATH = pathlib.Path(__file__).parent / 'saved models'
     PLOTS_OUTPUT_PATH = pathlib.Path(__file__).parent / 'plots'
     CALCE_OUTPUT_PATH = MODEL_OUTPUT_PATH / "CALCE"
     NASA_OUTPUT_PATH = MODEL_OUTPUT_PATH / "NASA"
+    CUSTOM_OUTPUT_PATH = MODEL_OUTPUT_PATH / "Custom Dataset"
