@@ -107,7 +107,7 @@ class TemporalAttention(torch.nn.Module):
     def forward(self, x):
         dot_prods = torch.bmm(x, x.mT)
 
-        mask =torch.full((x.size(-2), x.size(-2)), -1e9).to(x.get_device())
+        mask =torch.full((x.size(-2), x.size(-2)), -1e9).to(x.device)
         mask = torch.triu(mask, diagonal=1)
         masked_dot_prods = dot_prods + mask
 

@@ -1,24 +1,25 @@
 import torch
+import torch.nn.init as init
 
 class ASTLSTM(torch.nn.Module):
     def __init__(self, input_size, hidden_size, cell_size):
         super().__init__()
         self.hidden_size = hidden_size
         
-        self.w_f = torch.nn.Parameter(torch.Tensor(hidden_size+input_size, cell_size))
-        self.b_f = torch.nn.Parameter(torch.Tensor(cell_size))
+        self.w_f = torch.nn.Parameter(init.xavier_uniform_(torch.empty(hidden_size+input_size, cell_size)))
+        self.b_f = torch.nn.Parameter(torch.zeros(cell_size))
 
         self.sig = torch.nn.Sigmoid()
         self.tanh = torch.nn.Tanh()
 
-        self.inp_peephole = torch.nn.Parameter(torch.Tensor(cell_size))
+        self.inp_peephole = torch.nn.Parameter(init.uniform_(torch.empty(cell_size), -0.01, 0.01))
 
-        self.w_z = torch.nn.Parameter(torch.Tensor(hidden_size+input_size, cell_size))
-        self.b_z = torch.nn.Parameter(torch.Tensor(cell_size))
+        self.w_z = torch.nn.Parameter(init.xavier_uniform_(torch.empty(hidden_size+input_size, cell_size)))
+        self.b_z = torch.nn.Parameter(torch.zeros(cell_size))
 
-        self.out_peephole = torch.nn.Parameter(torch.Tensor(cell_size))
-        self.w_o = torch.nn.Parameter(torch.Tensor(hidden_size+input_size, cell_size))
-        self.b_o = torch.nn.Parameter(torch.Tensor(cell_size))
+        self.out_peephole = torch.nn.Parameter(init.uniform_(torch.empty(cell_size), -0.01, 0.01))
+        self.w_o = torch.nn.Parameter(init.xavier_uniform_(torch.empty(hidden_size+input_size, cell_size)))
+        self.b_o = torch.nn.Parameter(torch.zeros(cell_size))
 
     def forward(self, x, init_states=None):
         bs, seq_sz, _ = x.size()
@@ -77,21 +78,22 @@ class CNN_ASTLSTM(torch.nn.Module):
         self._initialize_weights()
 
     def _initialize_weights(self):
-        # Initialize CNN weights
-        torch.nn.init.xavier_normal_(self.cnn_1.weight)
+        # CNN Initialization
+        init.xavier_normal_(self.cnn_1.weight)
+        
+        # ASTLSTM Initialization
+        for lstm in [self.ast_lstm_1, self.ast_lstm_2]:
+            init.xavier_uniform_(lstm.w_f)
+            init.xavier_uniform_(lstm.w_z)
+            init.xavier_uniform_(lstm.w_o)
+            init.uniform_(lstm.inp_peephole, -0.01, 0.01)
+            init.uniform_(lstm.out_peephole, -0.01, 0.01)
 
-        # Initialize AST-LSTM weights (assuming ASTLSTM has `weight_ih` and `weight_hh` attributes)
-        if hasattr(self.ast_lstm_1, 'weight_ih'):
-            torch.nn.init.xavier_normal_(self.ast_lstm_1.weight_ih)
-            torch.nn.init.xavier_normal_(self.ast_lstm_1.weight_hh)
-        if hasattr(self.ast_lstm_2, 'weight_ih'):
-            torch.nn.init.xavier_normal_(self.ast_lstm_2.weight_ih)
-            torch.nn.init.xavier_normal_(self.ast_lstm_2.weight_hh)
-
-        # Initialize DNN weights
+        # DNN Initialization
         for layer in self.fc:
             if isinstance(layer, torch.nn.Linear):
-                torch.nn.init.xavier_normal_(layer.weight)
+                init.xavier_uniform_(layer.weight)
+                init.zeros_(layer.bias)  # Zero bias
 
     def forward(self, x):
         x = self.cnn_1(x)
